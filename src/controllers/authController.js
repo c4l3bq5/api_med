@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Session = require('../models/Session');
 const { validationResult } = require('express-validator');
 
 const authController = {
@@ -34,7 +35,7 @@ const authController = {
       }
 
       // Verificar contraseña
-      const isValidPassword = await User.verifyPassword(contrasena, user.contrasena); // Cambié el nombre de la variable aquí
+      const isValidPassword = await User.verifycontrasenaword(contrasena, user.contrasena);
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
@@ -69,8 +70,13 @@ const authController = {
         { expiresIn: process.env.JWT_EXPIRES_IN }
       );
 
+      await Session.create({
+        usuario_id: user.id,
+        token: token // El JWT generado
+    });
+
       // Remover contraseña del response
-      const { contrasena: userPassword, ...userWithoutPassword } = user; // Cambié el nombre aquí también
+      const { contrasena: userPassword, ...userWithoutPassword } = user;
 
       res.json({
         success: true,
@@ -85,6 +91,8 @@ const authController = {
       next(error);
     }
   },
+
+  
 
   // Verificar MFA (para usuarios con MFA activo)
   async verifyMfa(req, res, next) {
@@ -149,6 +157,11 @@ const authController = {
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN }
       );
+      
+      await Session.create({
+        usuario_id: user.id,
+        token: token
+      });
 
       // Remover contraseña del response
       const { contrasena: userPassword, ...userWithoutPassword } = user; // Cambié el nombre aquí también

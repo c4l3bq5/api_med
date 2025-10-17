@@ -1,22 +1,45 @@
 const express = require('express');
 const authRoutes = require('./routes/auth');
 const patientRoutes = require('./routes/patients');
+const sessionRoutes = require('./routes/sessions');
+const logRoutes = require('./routes/logs');
 const medicalHistoryRoutes = require('./routes/medicalHistory');
-const app = express();
-
-app.use(express.json());
-
-app.use('/api/auth', authRoutes);
-app.use('/api/patients', patientRoutes);
-app.use('/api/medical-history', medicalHistoryRoutes);
-
 const userRoutes = require('./routes/users');
 const personRoutes = require('./routes/persons');
 const roleRoutes = require('./routes/roles');
 
+const User = require('./models/User');
+const Person = require('./models/Person');
+const Role = require('./models/Role');
+const Patient = require('./models/Patient');
+const MedicalHistory = require('./models/MedicalHistory');
+const Session = require('./models/Session');
+
+const app = express();
+
+app.use(express.json());
+
+app.use((req, res, next) => {
+  req.db = {
+    User,
+    Person,
+    Role,
+    Session,
+    Patient,
+    MedicalHistory
+  };
+  next();
+});
+
+// Ahora sí las rutas (después del middleware)
+app.use('/api/auth', authRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/medical-history', medicalHistoryRoutes);
+app.use('/api/sessions', sessionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/roles', roleRoutes);
+app.use('/api/logs', logRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

@@ -10,7 +10,7 @@ const medicalHistoryController = {
       const { active } = req.query;
       const includeInactive = active === 'false';
       
-      const medicalHistories = await MedicalHistory.findAll(!includeInactive);
+      const medicalHistories = await req.db.MedicalHistory.findAll(!includeInactive);
       res.json({
         success: true,
         data: medicalHistories,
@@ -25,7 +25,7 @@ const medicalHistoryController = {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const medicalHistory = await MedicalHistory.findById(id);
+      const medicalHistory = await req.db.MedicalHistory.findById(id);
       
       if (!medicalHistory) {
         return res.status(404).json({
@@ -54,10 +54,13 @@ const medicalHistoryController = {
         });
       }
 
-      const { usuario_id, paciente_id } = req.body;
+      const { paciente_id } = req.body;
+
+      // Tomar el usuario_id del token
+      const usuario_id = req.user.id;
 
       // Check if doctor exists and is active
-      const doctor = await User.findById(usuario_id);
+      const doctor = await req.db.User.findById(usuario_id);
       if (!doctor || doctor.activo !== 'activo') {
         return res.status(404).json({
           success: false,
@@ -66,15 +69,18 @@ const medicalHistoryController = {
       }
 
       // Check if patient exists and is active
-      const patient = await Patient.findById(paciente_id);
-      if (!patient || patient.activo !== 'activo') {
+      const patient = await req.db.Patient.findById(paciente_id);
+      if (!patient || patient.activo !== 'activo') { // Corregí esta línea
         return res.status(404).json({
           success: false,
           message: 'Patient not found or inactive'
         });
       }
 
-      const newMedicalHistory = await MedicalHistory.create(req.body);
+      const newMedicalHistory = await req.db.MedicalHistory.create({
+        ...req.body,
+        usuario_id: usuario_id
+      });
       
       res.status(201).json({
         success: true,
@@ -106,7 +112,7 @@ const medicalHistoryController = {
       const { id } = req.params;
       
       // Check if medical history exists
-      const existingMedicalHistory = await MedicalHistory.findById(id);
+      const existingMedicalHistory = await req.db.MedicalHistory.findById(id);
       if (!existingMedicalHistory) {
         return res.status(404).json({
           success: false,
@@ -114,7 +120,7 @@ const medicalHistoryController = {
         });
       }
 
-      const updatedMedicalHistory = await MedicalHistory.update(id, req.body);
+      const updatedMedicalHistory = await req.db.MedicalHistory.update(id, req.body);
       
       res.json({
         success: true,
@@ -131,7 +137,7 @@ const medicalHistoryController = {
     try {
       const { id } = req.params;
       
-      const existingMedicalHistory = await MedicalHistory.findById(id);
+      const existingMedicalHistory = await req.db.MedicalHistory.findById(id);
       if (!existingMedicalHistory) {
         return res.status(404).json({
           success: false,
@@ -146,7 +152,7 @@ const medicalHistoryController = {
         });
       }
 
-      const deactivatedMedicalHistory = await MedicalHistory.delete(id);
+      const deactivatedMedicalHistory = await req.db.MedicalHistory.delete(id);
       
       res.json({
         success: true,
@@ -164,7 +170,7 @@ const medicalHistoryController = {
       const { patientId } = req.params;
       
       // Check if patient exists
-      const patient = await Patient.findById(patientId);
+      const patient = await req.db.Patient.findById(patientId);
       if (!patient) {
         return res.status(404).json({
           success: false,
@@ -172,7 +178,7 @@ const medicalHistoryController = {
         });
       }
 
-      const medicalHistories = await MedicalHistory.findByPatientId(patientId);
+      const medicalHistories = await req.db.MedicalHistory.findByPatientId(patientId);
       
       res.json({
         success: true,
@@ -191,7 +197,7 @@ const medicalHistoryController = {
       const { page = 1, limit = 10 } = req.query;
       
       // Check if patient exists
-      const patient = await Patient.findById(patientId);
+      const patient = await req.db.Patient.findById(patientId);
       if (!patient) {
         return res.status(404).json({
           success: false,
@@ -199,7 +205,7 @@ const medicalHistoryController = {
         });
       }
 
-      const result = await MedicalHistory.getByPatientWithPagination(
+      const result = await req.db.MedicalHistory.getByPatientWithPagination(
         patientId, 
         parseInt(page), 
         parseInt(limit)
@@ -220,7 +226,7 @@ const medicalHistoryController = {
       const { doctorId } = req.params;
       
       // Check if doctor exists
-      const doctor = await User.findById(doctorId);
+      const doctor = await req.db.User.findById(doctorId);
       if (!doctor) {
         return res.status(404).json({
           success: false,
@@ -228,7 +234,7 @@ const medicalHistoryController = {
         });
       }
 
-      const medicalHistories = await MedicalHistory.findByDoctorId(doctorId);
+      const medicalHistories = await req.db.MedicalHistory.findByDoctorId(doctorId);
       
       res.json({
         success: true,
@@ -243,7 +249,7 @@ const medicalHistoryController = {
   // Get medical history statistics
   async getStats(req, res, next) {
     try {
-      const stats = await MedicalHistory.getStats();
+      const stats = await req.db.MedicalHistory.getStats();
       
       res.json({
         success: true,

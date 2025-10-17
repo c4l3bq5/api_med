@@ -52,19 +52,10 @@ const paginationValidation = [
     .isInt({ min: 1, max: 50 }).withMessage('Limit must be between 1 and 50')
 ];
 
-const requireMedicoOrInterno = authorize([1, 2]); 
-
-const requireMedicoInternoOrAdmin = authorize([1, 2, 3]);
-
-const requireMedicoOnly = authorize([1]);
-
 module.exports = {
   createMedicalHistoryValidation,
   updateMedicalHistoryValidation,
   idValidation,
   patientIdValidation,
-  paginationValidation,
-  requireMedicoOrInterno,
-  requireMedicoInternoOrAdmin,
-  requireMedicoOnly
+  paginationValidation
 };

@@ -1,5 +1,3 @@
-const Role = require('../models/Role');
-
 const authorize = (allowedRoles = []) => {
   return (req, res, next) => {
     // Verificar que el usuario esté autenticado y tenga rol
@@ -28,17 +26,19 @@ const authorize = (allowedRoles = []) => {
 };
 
 // Middleware específico para administradores
-const requireAdmin = authorize([3]); // 3 = administrador
-
-// Middleware para médicos y administradores
-const requireMedicoOrAdmin = authorize([1, 3]); // 1 = médico, 3 = administrador
-
-// Middleware para cualquier usuario autenticado
+const requireAdmin = authorize([3]);
+const requireMedicoOrAdmin = authorize([1, 3]);
+const requireMedicoOrInterno = authorize([1, 2]);
+const requireMedicoOnly = authorize([1]);
+const requireMedicoInternoOrAdmin = authorize([1, 2, 3]);
 const requireAuth = authorize([]);
 
 module.exports = {
   authorize,
   requireAdmin,
   requireMedicoOrAdmin,
+  requireMedicoOrInterno,
+  requireMedicoOnly,
+  requireMedicoInternoOrAdmin,
   requireAuth
 };
