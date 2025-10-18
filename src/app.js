@@ -67,6 +67,12 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
+console.log('=== ENVIRONMENT VARIABLES ===');
+console.log('PORT:', process.env.PORT);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'EXISTS' : 'MISSING');
+console.log('=============================');
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(` Server running on port ${PORT}`);
 });
