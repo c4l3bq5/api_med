@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const personController = require('../controllers/personController');
-const { requireAuth } = require('../middleware/authorization');
+const { requireAuth, requireAdmin } = require('../middleware/authorization');
 const { authenticateToken } = require('../middleware/auth');
 const {
   createPersonValidation,
@@ -20,8 +20,8 @@ router.post('/', authenticateToken, requireAuth, createPersonValidation, personC
 
 router.put('/:id', authenticateToken, requireAuth, updatePersonValidation, personController.update);
 
-router.delete('/:id', authenticateToken, requireAuth, idValidation, personController.delete);
+router.delete('/:id', authenticateToken, requireAuth, requireAdmin, idValidation, personController.delete);
 
-router.patch('/:id/activate', authenticateToken, requireAuth, idValidation, personController.activate);
+router.patch('/:id/activate', authenticateToken, requireAuth, requireAdmin, idValidation, personController.activate);
 
 module.exports = router;

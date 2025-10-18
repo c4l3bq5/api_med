@@ -113,6 +113,25 @@ const personController = {
         });
       }
 
+      if (req.user.rol_id !== 3) { // No es admin
+  // Médicos solo pueden editar pacientes
+  if (req.user.rol_id === 1) { // Es médico
+    const isPatient = await Patient.findByPersonId(id);
+    if (!isPatient) {
+      return res.status(403).json({
+        success: false,
+        message: 'Doctors can only edit patients'
+      });
+    }
+  } else {
+    // Internos y otros roles no pueden editar
+    return res.status(403).json({
+      success: false,
+      message: 'Insufficient permissions to edit persons'
+    });
+  }
+}
+
       const userExists = await User.findByPersonId(id);
       if (userExists && req.user.rol_id !== 3) {
         return res.status(403).json({
@@ -173,6 +192,25 @@ const personController = {
           message: 'Person not found'
         });
       }
+
+      if (req.user.rol_id !== 3) { // No es admin
+  // Médicos solo pueden editar pacientes
+  if (req.user.rol_id === 1) { // Es médico
+    const isPatient = await Patient.findByPersonId(id);
+    if (!isPatient) {
+      return res.status(403).json({
+        success: false,
+        message: 'Doctors can only edit patients'
+      });
+    }
+  } else {
+    // Internos y otros roles no pueden editar
+    return res.status(403).json({
+      success: false,
+      message: 'Insufficient permissions to edit persons'
+    });
+  }
+}
 
       const userExists = await User.findByPersonId(id);
       if (userExists && req.user.rol_id !== 3) {
