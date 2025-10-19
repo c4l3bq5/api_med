@@ -90,55 +90,78 @@ class User {
     return result.rows[0];
   }
 
-  static async update(id, userData) {
-    const updates = [];
-    const values = [];
-    let paramCounter = 1;
+  // REEMPLAZA SOLO el método update() en User.js
 
-    // Solo actualizar los campos que se proporcionen
-    if (userData.rol_id !== undefined) {
-      updates.push(`rol_id = ${paramCounter++}`);
-      values.push(userData.rol_id);
-    }
-    if (userData.usuario !== undefined) {
-      updates.push(`usuario = ${paramCounter++}`);
-      values.push(userData.usuario);
-    }
-    if (userData.contrasena) {
-      const hashedContrasena = await bcrypt.hash(userData.contrasena, 12);
-      updates.push(`contrasena = ${paramCounter++}`);
-      values.push(hashedContrasena);
-    }
-    if (userData.mfa_secreto !== undefined) {
-      updates.push(`mfa_secreto = ${paramCounter++}`);
-      values.push(userData.mfa_secreto);
-    }
-    if (userData.mfa_activo !== undefined) {
-      updates.push(`mfa_activo = ${paramCounter++}`);
-      values.push(userData.mfa_activo);
-    }
-    if (userData.activo !== undefined) {
-      updates.push(`activo = ${paramCounter++}`);
-      values.push(userData.activo);
-    }
+static async update(id, userData) {
+  const {
+    rol_id,
+    usuario,
+    contrasena,
+    mfa_secreto,
+    mfa_activo,
+    activo
+  } = userData;
 
-    // Si no hay campos para actualizar, retornar el usuario existente
-    if (updates.length === 0) {
-      return this.findById(id);
-    }
+  // Construir dinámicamente la query basada en qué campos se envíen
+  const updates = [];
+  const values = [];
+  let paramIndex = 1;
 
-    values.push(id); // Agregar el ID al final para el WHERE
+  // Solo agregar campos que se envíen (no undefined)
+  if (rol_id !== undefined) {
+    updates.push(`rol_id = $${paramIndex++}`);
+    values.push(rol_id);
+  }
 
-    const query = `
-      UPDATE usuario 
-      SET ${updates.join(', ')}
-      WHERE id = ${paramCounter}
-      RETURNING *
-    `;
+  if (usuario !== undefined) {
+    updates.push(`usuario = $${paramIndex++}`);
+    values.push(usuario);
+  }
 
-    const result = await pool.query(query, values);
+  if (contrasena !== undefined) {
+    const hashedContrasena = await bcrypt.hash(contrasena, 12);
+    updates.push(`contrasena = $${paramIndex++}`);
+    values.push(hashedContrasena);
+  }
+
+  if (mfa_secreto !== undefined) {
+    updates.push(`mfa_secreto = $${paramIndex++}`);
+    values.push(mfa_secreto);
+  }
+
+  if (mfa_activo !== undefined) {
+    updates.push(`mfa_activo = $${paramIndex++}`);
+    values.push(mfa_activo);
+  }
+
+  if (activo !== undefined) {
+    updates.push(`activo = $${paramIndex++}`);
+    values.push(activo);
+  }
+
+  // Si no hay campos para actualizar, devolver el usuario existente
+  if (updates.length === 0) {
+    const query = `SELECT * FROM usuario WHERE id = $1`;
+    const result = await pool.query(query, [id]);
     return result.rows[0];
   }
+
+  // Agregar el ID al final
+  values.push(id);
+
+  const query = `
+    UPDATE usuario 
+    SET ${updates.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING *
+  `;
+
+  console.log('Update query:', query);
+  console.log('Update values:', values);
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
   static async delete(id) {
     const query = `
