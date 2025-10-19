@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 
 class Patient {
-  static async findAll(active = true) {
+static async findAll(showOnlyActive = true) {
   let query = `
     SELECT p.*, 
            per.nombre, per.a_paterno, per.a_materno, per.fech_nac,
@@ -10,9 +10,7 @@ class Patient {
     JOIN persona per ON p.persona_id = per.id
   `;
   
-  // Si active es true, mostrar solo activos
-  // Si active es false, mostrar TODOS (sin filtro)
-  if (active) {
+  if (showOnlyActive) {
     query += ` WHERE p.activo = 'activo'`;
   }
   
