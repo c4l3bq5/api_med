@@ -44,93 +44,137 @@ async getAll(req, res, next) {
   },
 
   // Create new patient
-  async create(req, res, next) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          errors: errors.array()
-        });
-      }
-
-      const { persona_id } = req.body;
-
-      // Check if person exists
-      const person = await Person.findById(persona_id);
-      if (!person) {
-        return res.status(404).json({
-          success: false,
-          message: 'Person not found'
-        });
-      }
-
-      // Check if person is already a patient
-      const existingPatient = await Patient.findByPersonId(persona_id);
-      if (existingPatient) {
-        return res.status(409).json({
-          success: false,
-          message: 'This person is already registered as a patient'
-        });
-      }
-
-      const newPatient = await Patient.create(req.body);
-      
-      res.status(201).json({
-        success: true,
-        message: 'Patient created successfully',
-        data: newPatient
+  // Create new patient
+async create(req, res, next) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
       });
-    } catch (error) {
-      if (error.code === '23505') {
-        return res.status(409).json({
-          success: false,
-          message: 'Patient already exists'
-        });
-      }
-      if (error.code === '23503') {
-        return res.status(404).json({
-          success: false,
-          message: 'Person not found'
-        });
-      }
-      next(error);
     }
-  },
+
+    const { persona, paciente } = req.body;
+
+    // Verificar si ya existe una persona con ese CI
+    const existingPerson = await Person.findByCI(persona.ci);
+    if (existingPerson) {
+      return res.status(409).json({
+        success: false,
+        message: 'A person with this CI already exists'
+      });
+    }
+
+    // Crear la persona primero
+    const newPerson = await Person.create(persona);
+    
+    // Crear el paciente vinculado a la persona
+    const patientData = {
+      persona_id: newPerson.id,
+      ...paciente
+    };
+
+    const newPatient = await Patient.create(patientData);
+    
+    // Obtener el paciente completo con datos de persona
+    const fullPatientData = await Patient.findById(newPatient.id);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Patient created successfully',
+      data: fullPatientData
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'Patient already exists'
+      });
+    }
+    if (error.code === '23503') {
+      return res.status(404).json({
+        success: false,
+        message: 'Person not found'
+      });
+    }
+    next(error);
+  }
+},
 
   // Update patient
-  async update(req, res, next) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          errors: errors.array()
-        });
-      }
-
-      const { id } = req.params;
-      
-      // Check if patient exists
-      const existingPatient = await Patient.findById(id);
-      if (!existingPatient) {
-        return res.status(404).json({
-          success: false,
-          message: 'Patient not found'
-        });
-      }
-
-      const updatedPatient = await Patient.update(id, req.body);
-      
-      res.json({
-        success: true,
-        message: 'Patient updated successfully',
-        data: updatedPatient
+  // Update patient
+async update(req, res, next) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
       });
-    } catch (error) {
-      next(error);
     }
-  },
+
+    const { id } = req.params;
+    
+    // Check if patient exists
+    const existingPatient = await Patient.findById(id);
+    if (!existingPatient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    // Extraer datos de persona y paciente del request
+    const { 
+      // Datos de persona
+      nombre, a_paterno, a_materno, fech_nac, telefono, mail, ci, genero, domicilio,
+      // Datos de paciente  
+      grupo_sanguineo, alergias, antecedentes, estatura, provincia, activo 
+    } = req.body;
+
+    // Actualizar datos de la persona
+    if (nombre || a_paterno || a_materno || fech_nac || telefono || mail || ci || genero || domicilio) {
+      const personData = {
+        nombre,
+        a_paterno, 
+        a_materno,
+        fech_nac,
+        telefono,
+        mail,
+        ci,
+        genero,
+        domicilio,
+        activo: existingPatient.activo // Mantener el estado actual de la persona
+      };
+      
+      await Person.update(existingPatient.persona_id, personData);
+    }
+
+    // Actualizar datos del paciente
+    const patientData = {
+      grupo_sanguineo,
+      alergias, 
+      antecedentes,
+      estatura,
+      provincia,
+      activo
+    };
+
+    const updatedPatient = await Patient.update(id, patientData);
+    
+    // Obtener el paciente actualizado con los datos de persona
+    const fullPatientData = await Patient.findById(id);
+    
+    res.json({
+      success: true,
+      message: 'Patient updated successfully',
+      data: fullPatientData
+    });
+  } catch (error) {
+    next(error);
+  }
+},
 
   // Delete patient (soft delete)
   async delete(req, res, next) {
