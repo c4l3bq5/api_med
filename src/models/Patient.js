@@ -2,18 +2,25 @@ const pool = require('../config/database');
 
 class Patient {
   static async findAll(active = true) {
-    const query = `
-      SELECT p.*, 
-             per.nombre, per.a_paterno, per.a_materno, per.fech_nac,
-             per.telefono, per.mail, per.ci, per.genero, per.domicilio
-      FROM paciente p
-      JOIN persona per ON p.persona_id = per.id
-      WHERE p.activo = $1
-      ORDER BY p.id DESC
-    `;
-    const result = await pool.query(query, [active ? 'activo' : 'inactivo']);
-    return result.rows;
+  let query = `
+    SELECT p.*, 
+           per.nombre, per.a_paterno, per.a_materno, per.fech_nac,
+           per.telefono, per.mail, per.ci, per.genero, per.domicilio
+    FROM paciente p
+    JOIN persona per ON p.persona_id = per.id
+  `;
+  
+  // Si active es true, mostrar solo activos
+  // Si active es false, mostrar TODOS (sin filtro)
+  if (active) {
+    query += ` WHERE p.activo = 'activo'`;
   }
+  
+  query += ` ORDER BY p.id DESC`;
+  
+  const result = await pool.query(query);
+  return result.rows;
+}
 
   static async findById(id) {
     const query = `
