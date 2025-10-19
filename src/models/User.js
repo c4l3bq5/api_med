@@ -91,39 +91,50 @@ class User {
   }
 
   static async update(id, userData) {
-    const {
-      rol_id,
-      usuario,
-      contrasena,
-      mfa_secreto,
-      mfa_activo,
-      activo
-    } = userData;
+    const updates = [];
+    const values = [];
+    let paramCounter = 1;
 
-    let query;
-    let values;
-
-    if (contrasena) {
-      // Si hay nueva contraseña, hashearla
-      const hashedContrasena = await bcrypt.hash(contrasena, 12);
-      query = `
-        UPDATE usuario 
-        SET rol_id = $1, usuario = $2, contrasena = $3, 
-            mfa_secreto = $4, mfa_activo = $5, activo = $6
-        WHERE id = $7
-        RETURNING *
-      `;
-      values = [rol_id, usuario, hashedContrasena, mfa_secreto, mfa_activo, activo, id];
-    } else {
-      query = `
-        UPDATE usuario 
-        SET rol_id = $1, usuario = $2, mfa_secreto = $3, 
-            mfa_activo = $4, activo = $5
-        WHERE id = $6
-        RETURNING *
-      `;
-      values = [rol_id, usuario, mfa_secreto, mfa_activo, activo, id];
+    // Solo actualizar los campos que se proporcionen
+    if (userData.rol_id !== undefined) {
+      updates.push(`rol_id = ${paramCounter++}`);
+      values.push(userData.rol_id);
     }
+    if (userData.usuario !== undefined) {
+      updates.push(`usuario = ${paramCounter++}`);
+      values.push(userData.usuario);
+    }
+    if (userData.contrasena) {
+      const hashedContrasena = await bcrypt.hash(userData.contrasena, 12);
+      updates.push(`contrasena = ${paramCounter++}`);
+      values.push(hashedContrasena);
+    }
+    if (userData.mfa_secreto !== undefined) {
+      updates.push(`mfa_secreto = ${paramCounter++}`);
+      values.push(userData.mfa_secreto);
+    }
+    if (userData.mfa_activo !== undefined) {
+      updates.push(`mfa_activo = ${paramCounter++}`);
+      values.push(userData.mfa_activo);
+    }
+    if (userData.activo !== undefined) {
+      updates.push(`activo = ${paramCounter++}`);
+      values.push(userData.activo);
+    }
+
+    // Si no hay campos para actualizar, retornar el usuario existente
+    if (updates.length === 0) {
+      return this.findById(id);
+    }
+
+    values.push(id); // Agregar el ID al final para el WHERE
+
+    const query = `
+      UPDATE usuario 
+      SET ${updates.join(', ')}
+      WHERE id = ${paramCounter}
+      RETURNING *
+    `;
 
     const result = await pool.query(query, values);
     return result.rows[0];
