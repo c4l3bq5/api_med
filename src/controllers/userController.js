@@ -1,14 +1,11 @@
 const { validationResult } = require('express-validator');
 
 const userController = {
-  // Get all users
+  // Get all users - Devuelve todos (activos e inactivos)
   async getAll(req, res, next) {
     try {
-      const { active } = req.query;
-      const includeInactive = active === 'false';
-      
-      // USAR req.db.User en lugar de User directo
-      const users = await req.db.User.findAll(!includeInactive);
+      // Devolvemos TODOS los usuarios sin filtro
+      const users = await req.db.User.findAll(null);
       res.json({
         success: true,
         data: users,
@@ -23,7 +20,6 @@ const userController = {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      // USAR req.db.User
       const user = await req.db.User.findById(id);
       
       if (!user) {
@@ -55,7 +51,7 @@ const userController = {
 
       const { persona_id, rol_id, usuario } = req.body;
 
-      // Check if person exists - USAR req.db.Person
+      // Check if person exists
       const person = await req.db.Person.findById(persona_id);
       if (!person) {
         return res.status(404).json({
@@ -64,7 +60,7 @@ const userController = {
         });
       }
 
-      // Check if role exists - USAR req.db.Role
+      // Check if role exists
       const role = await req.db.Role.findById(rol_id);
       if (!role) {
         return res.status(404).json({
@@ -73,7 +69,7 @@ const userController = {
         });
       }
 
-      // Check if username already exists - USAR req.db.User
+      // Check if username already exists
       const existingUser = await req.db.User.findByUsername(usuario);
       if (existingUser) {
         return res.status(409).json({
@@ -91,7 +87,6 @@ const userController = {
         });
       }
 
-      // USAR req.db.User
       const newUser = await req.db.User.create(req.body);
       
       // Remove password from response
@@ -119,7 +114,7 @@ const userController = {
     }
   },
 
-  // ... resto de los métodos actualizados de la misma manera
+  // Update user
   async update(req, res, next) {
     try {
       const errors = validationResult(req);
@@ -132,7 +127,6 @@ const userController = {
 
       const { id } = req.params;
       
-      // USAR req.db.User
       const existingUser = await req.db.User.findById(id);
       if (!existingUser) {
         return res.status(404).json({
@@ -180,6 +174,7 @@ const userController = {
     }
   },
 
+  // Delete (Deactivate) user
   async delete(req, res, next) {
     try {
       const { id } = req.params;
@@ -211,55 +206,58 @@ const userController = {
     }
   },
 
+  // Enable MFA
   async enableMfa(req, res, next) {
-  try {
-    const { id } = req.params;
-    const { mfa_secreto } = req.body;
+    try {
+      const { id } = req.params;
+      const { mfa_secreto } = req.body;
 
-    const existingUser = await req.db.User.findById(id);
-    if (!existingUser) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
+      const existingUser = await req.db.User.findById(id);
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const updatedUser = await req.db.User.updateMfaSecret(id, mfa_secreto);
+      
+      res.json({
+        success: true,
+        message: 'MFA enabled successfully',
+        data: { mfa_activo: updatedUser.mfa_activo }
       });
+    } catch (error) {
+      next(error);
     }
+  },
 
-    const updatedUser = await req.db.User.updateMfaSecret(id, mfa_secreto);
-    
-    res.json({
-      success: true,
-      message: 'MFA enabled successfully',
-      data: { mfa_activo: updatedUser.mfa_activo }
-    });
-  } catch (error) {
-    next(error);
-  }
-},
+  // Disable MFA
+  async disableMfa(req, res, next) {
+    try {
+      const { id } = req.params;
 
-async disableMfa(req, res, next) {
-  try {
-    const { id } = req.params;
+      const existingUser = await req.db.User.findById(id);
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
 
-    const existingUser = await req.db.User.findById(id);
-    if (!existingUser) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
+      const updatedUser = await req.db.User.disableMfa(id);
+      
+      res.json({
+        success: true,
+        message: 'MFA disabled successfully',
+        data: { mfa_activo: updatedUser.mfa_activo }
       });
+    } catch (error) {
+      next(error);
     }
+  },
 
-    const updatedUser = await req.db.User.disableMfa(id);
-    
-    res.json({
-      success: true,
-      message: 'MFA disabled successfully',
-      data: { mfa_activo: updatedUser.mfa_activo }
-    });
-  } catch (error) {
-    next(error);
-  }
-},
-
+  // Activate user
   async activate(req, res, next) {
     try {
       const { id } = req.params;

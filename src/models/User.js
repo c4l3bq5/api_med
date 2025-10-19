@@ -2,16 +2,28 @@ const pool = require('../config/database');
 const bcrypt = require('bcrypt');
 
 class User {
-  static async findAll(active = true) {
-    const query = `
+  static async findAll(active = null) {
+    let query = `
       SELECT u.*, p.nombre, p.a_paterno, p.a_materno, p.mail, r.nombre as rol_nombre
       FROM usuario u
       JOIN persona p ON u.persona_id = p.id
       JOIN roles r ON u.rol_id = r.id
-      WHERE u.activo = $1
-      ORDER BY u.id DESC
     `;
-    const result = await pool.query(query, [active ? 'activo' : 'inactivo']);
+    
+    const params = [];
+    
+    // Si se pasa un parámetro active, filtra; si no, devuelve todos
+    if (active !== null) {
+      query += `WHERE u.activo = $1`;
+      params.push(active ? 'activo' : 'inactivo');
+    }
+    
+    query += ` ORDER BY u.id DESC`;
+    
+    const result = params.length > 0 
+      ? await pool.query(query, params)
+      : await pool.query(query);
+    
     return result.rows;
   }
 
@@ -50,17 +62,17 @@ class User {
       persona_id,
       rol_id,
       usuario,
-     contrasena,
+      contrasena,
       mfa_secreto,
       mfa_activo = false
     } = userData;
 
-    // Hash contrasenaword
-    const hashedcontrasenaword = await bcrypt.hash(contrasena, 12);
+    // Hash contraseña
+    const hashedContrasena = await bcrypt.hash(contrasena, 12);
 
     const query = `
       INSERT INTO usuario 
-      (persona_id, rol_id, usuario,contrasena, mfa_secreto, mfa_activo)
+      (persona_id, rol_id, usuario, contrasena, mfa_secreto, mfa_activo)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
@@ -69,7 +81,7 @@ class User {
       persona_id,
       rol_id,
       usuario,
-      hashedcontrasenaword,
+      hashedContrasena,
       mfa_secreto,
       mfa_activo
     ];
@@ -82,7 +94,7 @@ class User {
     const {
       rol_id,
       usuario,
-     contrasena,
+      contrasena,
       mfa_secreto,
       mfa_activo,
       activo
@@ -93,15 +105,15 @@ class User {
 
     if (contrasena) {
       // Si hay nueva contraseña, hashearla
-      const hashedcontrasenaword = await bcrypt.hash(contrasena, 12);
+      const hashedContrasena = await bcrypt.hash(contrasena, 12);
       query = `
         UPDATE usuario 
-        SET rol_id = $1, usuario = $2,contrasena = $3, 
+        SET rol_id = $1, usuario = $2, contrasena = $3, 
             mfa_secreto = $4, mfa_activo = $5, activo = $6
         WHERE id = $7
         RETURNING *
       `;
-      values = [rol_id, usuario, hashedcontrasenaword, mfa_secreto, mfa_activo, activo, id];
+      values = [rol_id, usuario, hashedContrasena, mfa_secreto, mfa_activo, activo, id];
     } else {
       query = `
         UPDATE usuario 
@@ -139,8 +151,8 @@ class User {
     return result.rows[0];
   }
 
-  static async verifycontrasenaword(plaincontrasenaword, hashedcontrasenaword) {
-    return await bcrypt.compare(plaincontrasenaword, hashedcontrasenaword);
+  static async verifyContrasena(plainContrasena, hashedContrasena) {
+    return await bcrypt.compare(plainContrasena, hashedContrasena);
   }
 
   static async updateMfaSecret(id, mfa_secreto) {
