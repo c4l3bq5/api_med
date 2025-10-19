@@ -195,6 +195,29 @@ const authController = {
     }
   },
 
+  async me(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const user = await req.db.User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const { contrasena, mfa_secreto, ...userWithoutSensitive } = user;
+    
+    res.json({
+      success: true,
+      data: userWithoutSensitive
+    });
+  } catch (error) {
+    next(error);
+  }
+},
+
   // Logout (manejado principalmente en el cliente)
   async logout(req, res, next) {
     try {

@@ -16,6 +16,8 @@ router.post('/verify-mfa', mfaValidation, authController.verifyMfa);
 // GET /api/auth/verify - Verificar token actual
 router.get('/verify', authenticateToken, authController.verify);
 
+router.get('/me', authenticateToken, authController.me); 
+
 // POST /api/auth/logout - Logout
 router.post('/logout', authenticateToken, authController.logout);
 
