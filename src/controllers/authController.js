@@ -35,7 +35,7 @@ const authController = {
       }
 
       // Verificar contraseña
-      const isValidPassword = await User.verifycontrasenaword(contrasena, user.contrasena);
+      const isValidPassword = await User.verifyContrasena(contrasena, user.contrasena);
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
