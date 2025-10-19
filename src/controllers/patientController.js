@@ -5,20 +5,19 @@ const { validationResult } = require('express-validator');
 const patientController = {
   // Get all patients
   async getAll(req, res, next) {
-    try {
-      const { active } = req.query;
-      const includeInactive = active === 'false';
-      
-      const patients = await Patient.findAll(!includeInactive);
-      res.json({
-        success: true,
-        data: patients,
-        count: patients.length
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+  try {
+    const { includeInactive } = req.query; // Cambiar de 'active' a 'includeInactive'
+    
+    const patients = await Patient.findAll(includeInactive !== 'true'); // Invertir la lógica
+    res.json({
+      success: true,
+      data: patients,
+      total: patients.length
+    });
+  } catch (error) {
+    next(error);
+  }
+},
 
   // Get patient by ID
   async getById(req, res, next) {
