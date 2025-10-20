@@ -104,6 +104,7 @@ async create(req, res, next) {
 
   // Update patient
   // Update patient
+// Update patient
 async update(req, res, next) {
   try {
     const errors = validationResult(req);
@@ -115,6 +116,8 @@ async update(req, res, next) {
     }
 
     const { id } = req.params;
+    
+    console.log('🔵 Update request body:', req.body); // DEBUG
     
     // Check if patient exists
     const existingPatient = await Patient.findById(id);
@@ -133,35 +136,40 @@ async update(req, res, next) {
       grupo_sanguineo, alergias, antecedentes, estatura, provincia, activo 
     } = req.body;
 
-    // Actualizar datos de la persona
-    if (nombre || a_paterno || a_materno || fech_nac || telefono || mail || ci || genero || domicilio) {
-      const personData = {
-        nombre,
-        a_paterno, 
-        a_materno,
-        fech_nac,
-        telefono,
-        mail,
-        ci,
-        genero,
-        domicilio,
-        activo: existingPatient.activo // Mantener el estado actual de la persona
-      };
-      
-      await Person.update(existingPatient.persona_id, personData);
+    console.log('🔵 Datos recibidos para persona:', { 
+      nombre, a_paterno, a_materno, fech_nac, telefono, mail, ci, genero, domicilio 
+    }); // DEBUG
+
+    // Actualizar datos de la persona - SOLO campos que vienen en el request
+    const personUpdates = {};
+    if (nombre !== undefined) personUpdates.nombre = nombre;
+    if (a_paterno !== undefined) personUpdates.a_paterno = a_paterno;
+    if (a_materno !== undefined) personUpdates.a_materno = a_materno;
+    if (fech_nac !== undefined) personUpdates.fech_nac = fech_nac;
+    if (telefono !== undefined) personUpdates.telefono = telefono;
+    if (mail !== undefined) personUpdates.mail = mail;
+    if (ci !== undefined) personUpdates.ci = ci;
+    if (genero !== undefined) personUpdates.genero = genero;
+    if (domicilio !== undefined) personUpdates.domicilio = domicilio;
+
+    // Solo actualizar persona si hay campos para actualizar
+    if (Object.keys(personUpdates).length > 0) {
+      console.log('🔵 Actualizando persona con:', personUpdates);
+      await Person.update(existingPatient.persona_id, personUpdates);
     }
 
-    // Actualizar datos del paciente
-    const patientData = {
-      grupo_sanguineo,
-      alergias, 
-      antecedentes,
-      estatura,
-      provincia,
-      activo
-    };
+    // Actualizar datos del paciente - SOLO campos que vienen en el request
+    const patientUpdates = {};
+    if (grupo_sanguineo !== undefined) patientUpdates.grupo_sanguineo = grupo_sanguineo;
+    if (alergias !== undefined) patientUpdates.alergias = alergias;
+    if (antecedentes !== undefined) patientUpdates.antecedentes = antecedentes;
+    if (estatura !== undefined) patientUpdates.estatura = estatura;
+    if (provincia !== undefined) patientUpdates.provincia = provincia;
+    if (activo !== undefined) patientUpdates.activo = activo;
 
-    const updatedPatient = await Patient.update(id, patientData);
+    console.log('🔵 Actualizando paciente con:', patientUpdates);
+
+    const updatedPatient = await Patient.update(id, patientUpdates);
     
     // Obtener el paciente actualizado con los datos de persona
     const fullPatientData = await Patient.findById(id);
@@ -172,6 +180,7 @@ async update(req, res, next) {
       data: fullPatientData
     });
   } catch (error) {
+    console.log('❌ Error updating patient:', error);
     next(error);
   }
 },

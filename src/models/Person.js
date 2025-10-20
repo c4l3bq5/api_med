@@ -66,44 +66,85 @@ class Person {
   }
 
   static async update(id, personData) {
-    const {
-      nombre,
-      a_paterno,
-      a_materno,
-      fech_nac,
-      telefono,
-      mail,
-      ci,
-      genero,
-      domicilio,
-      activo
-    } = personData;
+  // Construir dinámicamente la query basada en qué campos se envíen
+  const updates = [];
+  const values = [];
+  let paramIndex = 1;
 
-    const query = `
-      UPDATE persona 
-      SET nombre = $1, a_paterno = $2, a_materno = $3, fech_nac = $4, 
-          telefono = $5, mail = $6, ci = $7, genero = $8, domicilio = $9, activo = $10
-      WHERE id = $11
-      RETURNING *
-    `;
+  // Solo agregar campos que se envíen (no undefined)
+  if (personData.nombre !== undefined) {
+    updates.push(`nombre = $${paramIndex++}`);
+    values.push(personData.nombre);
+  }
 
-    const values = [
-      nombre,
-      a_paterno,
-      a_materno,
-      fech_nac,
-      telefono,
-      mail,
-      ci,
-      genero,
-      domicilio,
-      activo,
-      id
-    ];
+  if (personData.a_paterno !== undefined) {
+    updates.push(`a_paterno = $${paramIndex++}`);
+    values.push(personData.a_paterno);
+  }
 
-    const result = await pool.query(query, values);
+  if (personData.a_materno !== undefined) {
+    updates.push(`a_materno = $${paramIndex++}`);
+    values.push(personData.a_materno);
+  }
+
+  if (personData.fech_nac !== undefined) {
+    updates.push(`fech_nac = $${paramIndex++}`);
+    values.push(personData.fech_nac);
+  }
+
+  if (personData.telefono !== undefined) {
+    updates.push(`telefono = $${paramIndex++}`);
+    values.push(personData.telefono);
+  }
+
+  if (personData.mail !== undefined) {
+    updates.push(`mail = $${paramIndex++}`);
+    values.push(personData.mail);
+  }
+
+  if (personData.ci !== undefined) {
+    updates.push(`ci = $${paramIndex++}`);
+    values.push(personData.ci);
+  }
+
+  if (personData.genero !== undefined) {
+    updates.push(`genero = $${paramIndex++}`);
+    values.push(personData.genero);
+  }
+
+  if (personData.domicilio !== undefined) {
+    updates.push(`domicilio = $${paramIndex++}`);
+    values.push(personData.domicilio);
+  }
+
+  if (personData.activo !== undefined) {
+    updates.push(`activo = $${paramIndex++}`);
+    values.push(personData.activo);
+  }
+
+  // Si no hay campos para actualizar, devolver la persona existente
+  if (updates.length === 0) {
+    const query = `SELECT * FROM persona WHERE id = $1`;
+    const result = await pool.query(query, [id]);
     return result.rows[0];
   }
+
+  // Agregar el ID al final
+  values.push(id);
+
+  const query = `
+    UPDATE persona 
+    SET ${updates.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING *
+  `;
+
+  console.log(' Person update query:', query);
+  console.log(' Person update values:', values);
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
   static async delete(id) {
     const query = `
