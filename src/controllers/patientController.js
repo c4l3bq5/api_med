@@ -45,6 +45,7 @@ async getAll(req, res, next) {
 
   // Create new patient
   // Create new patient
+// Create new patient
 async create(req, res, next) {
   try {
     const errors = validationResult(req);
@@ -55,10 +56,16 @@ async create(req, res, next) {
       });
     }
 
-    const { persona, paciente } = req.body;
+    // Ahora los datos vienen planos desde Flutter
+    const {
+      // Datos de persona
+      nombre, a_paterno, a_materno, fech_nac, telefono, mail, ci, genero, domicilio,
+      // Datos de paciente
+      grupo_sanguineo, alergias, antecedentes, estatura, provincia
+    } = req.body;
 
     // Verificar si ya existe una persona con ese CI
-    const existingPerson = await Person.findByCI(persona.ci);
+    const existingPerson = await req.db.Person.findByCI(ci);
     if (existingPerson) {
       return res.status(409).json({
         success: false,
@@ -67,18 +74,34 @@ async create(req, res, next) {
     }
 
     // Crear la persona primero
-    const newPerson = await Person.create(persona);
+    const personData = {
+      nombre,
+      a_paterno,
+      a_materno,
+      fech_nac,
+      telefono,
+      mail,
+      ci,
+      genero,
+      domicilio
+    };
+    
+    const newPerson = await req.db.Person.create(personData);
     
     // Crear el paciente vinculado a la persona
     const patientData = {
       persona_id: newPerson.id,
-      ...paciente
+      grupo_sanguineo,
+      alergias,
+      antecedentes,
+      estatura,
+      provincia
     };
 
-    const newPatient = await Patient.create(patientData);
+    const newPatient = await req.db.Patient.create(patientData);
     
     // Obtener el paciente completo con datos de persona
-    const fullPatientData = await Patient.findById(newPatient.id);
+    const fullPatientData = await req.db.Patient.findById(newPatient.id);
     
     res.status(201).json({
       success: true,
