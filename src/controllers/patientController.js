@@ -104,7 +104,8 @@ async create(req, res, next) {
 
   // Update patient
   // Update patient
-// Update patient
+// En patientController.js, reemplaza el método update():
+
 async update(req, res, next) {
   try {
     const errors = validationResult(req);
@@ -117,10 +118,8 @@ async update(req, res, next) {
 
     const { id } = req.params;
     
-    console.log('🔵 Update request body:', req.body); // DEBUG
-    
-    // Check if patient exists
-    const existingPatient = await Patient.findById(id);
+    // Verificar que el paciente existe
+    const existingPatient = await req.db.Patient.findById(id);
     if (!existingPatient) {
       return res.status(404).json({
         success: false,
@@ -136,43 +135,39 @@ async update(req, res, next) {
       grupo_sanguineo, alergias, antecedentes, estatura, provincia, activo 
     } = req.body;
 
-    console.log('🔵 Datos recibidos para persona:', { 
-      nombre, a_paterno, a_materno, fech_nac, telefono, mail, ci, genero, domicilio 
-    }); // DEBUG
+    // Actualizar datos de la persona si se envían
+    const personaDataToUpdate = {};
+    if (nombre !== undefined) personaDataToUpdate.nombre = nombre;
+    if (a_paterno !== undefined) personaDataToUpdate.a_paterno = a_paterno;
+    if (a_materno !== undefined) personaDataToUpdate.a_materno = a_materno;
+    if (fech_nac !== undefined) personaDataToUpdate.fech_nac = fech_nac;
+    if (telefono !== undefined) personaDataToUpdate.telefono = telefono;
+    if (mail !== undefined) personaDataToUpdate.mail = mail;
+    if (ci !== undefined) personaDataToUpdate.ci = ci;
+    if (genero !== undefined) personaDataToUpdate.genero = genero;
+    if (domicilio !== undefined) personaDataToUpdate.domicilio = domicilio;
 
-    // Actualizar datos de la persona - SOLO campos que vienen en el request
-    const personUpdates = {};
-    if (nombre !== undefined) personUpdates.nombre = nombre;
-    if (a_paterno !== undefined) personUpdates.a_paterno = a_paterno;
-    if (a_materno !== undefined) personUpdates.a_materno = a_materno;
-    if (fech_nac !== undefined) personUpdates.fech_nac = fech_nac;
-    if (telefono !== undefined) personUpdates.telefono = telefono;
-    if (mail !== undefined) personUpdates.mail = mail;
-    if (ci !== undefined) personUpdates.ci = ci;
-    if (genero !== undefined) personUpdates.genero = genero;
-    if (domicilio !== undefined) personUpdates.domicilio = domicilio;
-
-    // Solo actualizar persona si hay campos para actualizar
-    if (Object.keys(personUpdates).length > 0) {
-      console.log('🔵 Actualizando persona con:', personUpdates);
-      await Person.update(existingPatient.persona_id, personUpdates);
+    // Si hay datos de persona para actualizar
+    if (Object.keys(personaDataToUpdate).length > 0) {
+      await req.db.Person.update(existingPatient.persona_id, personaDataToUpdate);
     }
 
-    // Actualizar datos del paciente - SOLO campos que vienen en el request
-    const patientUpdates = {};
-    if (grupo_sanguineo !== undefined) patientUpdates.grupo_sanguineo = grupo_sanguineo;
-    if (alergias !== undefined) patientUpdates.alergias = alergias;
-    if (antecedentes !== undefined) patientUpdates.antecedentes = antecedentes;
-    if (estatura !== undefined) patientUpdates.estatura = estatura;
-    if (provincia !== undefined) patientUpdates.provincia = provincia;
-    if (activo !== undefined) patientUpdates.activo = activo;
+    // Actualizar datos del paciente si se envían
+    const patientDataToUpdate = {};
+    if (grupo_sanguineo !== undefined) patientDataToUpdate.grupo_sanguineo = grupo_sanguineo;
+    if (alergias !== undefined) patientDataToUpdate.alergias = alergias;
+    if (antecedentes !== undefined) patientDataToUpdate.antecedentes = antecedentes;
+    if (estatura !== undefined) patientDataToUpdate.estatura = estatura;
+    if (provincia !== undefined) patientDataToUpdate.provincia = provincia;
+    if (activo !== undefined) patientDataToUpdate.activo = activo;
 
-    console.log('🔵 Actualizando paciente con:', patientUpdates);
+    // Si hay datos de paciente para actualizar
+    if (Object.keys(patientDataToUpdate).length > 0) {
+      await req.db.Patient.update(id, patientDataToUpdate);
+    }
 
-    const updatedPatient = await Patient.update(id, patientUpdates);
-    
-    // Obtener el paciente actualizado con los datos de persona
-    const fullPatientData = await Patient.findById(id);
+    // Obtener el paciente actualizado completo
+    const fullPatientData = await req.db.Patient.findById(id);
     
     res.json({
       success: true,
@@ -180,7 +175,6 @@ async update(req, res, next) {
       data: fullPatientData
     });
   } catch (error) {
-    console.log('❌ Error updating patient:', error);
     next(error);
   }
 },
