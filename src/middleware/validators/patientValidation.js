@@ -1,9 +1,44 @@
 const { body, param, query } = require('express-validator');
 
 const createPatientValidation = [
-  body('persona_id')
-    .isInt({ min: 1 }).withMessage('Person ID must be a positive integer'),
+  // Validaciones para datos de persona (cuando se envían en la creación)
+  body('nombre')
+    .notEmpty().withMessage('Name is required')
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
   
+  body('a_paterno')
+    .optional()
+    .isLength({ max: 100 }).withMessage('Last name must not exceed 100 characters'),
+  
+  body('a_materno')
+    .optional()
+    .isLength({ max: 100 }).withMessage('Mother\'s last name must not exceed 100 characters'),
+  
+  body('fech_nac')
+    .notEmpty().withMessage('Birth date is required')
+    .isISO8601().withMessage('Birth date must be a valid date'),
+  
+  body('telefono')
+    .optional()
+    .isLength({ max: 8 }).withMessage('Phone must not exceed 8 characters'),
+  
+  body('mail')
+    .optional()
+    .isEmail().withMessage('Email must be valid'),
+  
+  body('ci')
+    .notEmpty().withMessage('CI is required')
+    .isLength({ min: 1, max: 7 }).withMessage('CI must be between 7 characters'),
+  
+  body('genero')
+    .optional()
+    .isIn(['M', 'F', 'Masculino', 'Femenino', 'Otro']).withMessage('Invalid gender'),
+  
+  body('domicilio')
+    .optional()
+    .isLength({ max: 255 }).withMessage('Address must not exceed 255 characters'),
+  
+  // Validaciones para datos de paciente
   body('grupo_sanguineo')
     .optional()
     .isIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).withMessage('Invalid blood type'),
