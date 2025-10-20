@@ -33,8 +33,8 @@ const createPersonValidation = [
     .isNumeric().withMessage('CI must contain only numbers'),
   
   body('genero')
-    .optional()
-    .isIn(['Masculino', 'Femenino', 'Otro']).withMessage('Invalid gender'),
+  .optional()
+  .isIn(['M', 'F', 'Masculino', 'Femenino', 'Otro']).withMessage('Invalid gender'),
   
   body('domicilio')
     .optional()
