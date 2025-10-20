@@ -43,81 +43,54 @@ const patientController = {
 
   // Create new patient
   async create(req, res, next) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          errors: errors.array()
-        });
-      }
-
-      const {
-        nombre, a_paterno, a_materno, fech_nac, telefono, mail, ci, genero, domicilio,
-        grupo_sanguineo, alergias, antecedentes, estatura, provincia
-      } = req.body;
-
-      // Verificar si ya existe una persona con ese CI
-      const existingPerson = await req.db.Person.findByCI(ci);
-      if (existingPerson) {
-        return res.status(409).json({
-          success: false,
-          message: 'A person with this CI already exists'
-        });
-      }
-
-      // Crear la persona primero
-      const personData = {
-        nombre, a_paterno, a_materno, fech_nac, telefono, mail, ci, genero, domicilio
-      };
-      
-      const newPerson = await req.db.Person.create(personData);
-      console.log('✅ Persona creada con ID:', newPerson.id);
-      
-      // Crear el paciente vinculado a la persona
-      const patientData = {
-        persona_id: newPerson.id,
-        grupo_sanguineo, alergias, antecedentes, estatura, provincia
-      };
-
-      const newPatient = await req.db.Patient.create(patientData);
-      console.log('✅ Paciente creado con ID:', newPatient.id);
-      
-      // Obtener el paciente completo con datos de persona
-      const fullPatientData = await req.db.Patient.findById(newPatient.id);
-      console.log('✅ Datos completos del paciente:', fullPatientData);
-      
-      if (!fullPatientData) {
-        console.error('❌ No se encontró el paciente recién creado');
-        return res.status(500).json({
-          success: false,
-          message: 'Paciente creado pero no se pudo recuperar'
-        });
-      }
-      
-      res.status(201).json({
-        success: true,
-        message: 'Patient created successfully',
-        data: fullPatientData
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
       });
-
-    } catch (error) {
-      console.error('❌ Error en create:', error);
-      if (error.code === '23505') {
-        return res.status(409).json({
-          success: false,
-          message: 'Patient already exists'
-        });
-      }
-      if (error.code === '23503') {
-        return res.status(404).json({
-          success: false,
-          message: 'Person not found'
-        });
-      }
-      next(error);
     }
-  },
+
+    const {
+      persona_id,
+      grupo_sanguineo, alergias, antecedentes, estatura, provincia
+    } = req.body;
+
+    // NO crear persona aquí - ya fue creada en /api/persons
+    // Solo crear el paciente
+    const patientData = {
+      persona_id,
+      grupo_sanguineo,
+      alergias,
+      antecedentes,
+      estatura,
+      provincia
+    };
+
+    const newPatient = await req.db.Patient.create(patientData);
+    console.log(' Paciente creado con ID:', newPatient.id);
+    
+    const fullPatientData = await req.db.Patient.findById(newPatient.id);
+    console.log(' Datos completos:', fullPatientData);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Patient created successfully',
+      data: fullPatientData
+    });
+
+  } catch (error) {
+    console.error(' Error en create:', error);
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'Patient already exists'
+      });
+    }
+    next(error);
+  }
+},
 
   // Update patient
   async update(req, res, next) {
