@@ -88,7 +88,55 @@ class User {
     return result.rows[0];
   }
 
-  // ✅ MÉTODO UPDATE CORREGIDO
+  // 🔥 NUEVO: Crea un usuario con contraseña temporal
+  static async createWithTempPassword(userData) {
+    const {
+      persona_id,
+      rol_id,
+      usuario,
+      mfa_secreto,
+      mfa_activo = false
+    } = userData;
+
+    // 🔐 Generar contraseña temporal aleatoria (8 caracteres)
+    const tempPassword = this.generateTempPassword();
+    const hashedContrasena = await bcrypt.hash(tempPassword, 12);
+
+    const query = `
+      INSERT INTO usuario 
+      (persona_id, rol_id, usuario, contrasena, mfa_secreto, mfa_activo, es_temporal)
+      VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+      RETURNING *
+    `;
+
+    const values = [
+      persona_id,
+      rol_id,
+      usuario,
+      hashedContrasena,
+      mfa_secreto,
+      mfa_activo
+    ];
+
+    const result = await pool.query(query, values);
+    
+    // ✅ Retornar el usuario Y la contraseña temporal (sin hashear)
+    return {
+      user: result.rows[0],
+      tempPassword: tempPassword // 🔥 IMPORTANTE: Solo para mostrarlo al admin
+    };
+  }
+
+  // 🔥 NUEVO: Genera contraseña temporal aleatoria
+  static generateTempPassword(length = 8) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
   static async update(id, userData) {
     const {
       rol_id,
@@ -158,8 +206,8 @@ class User {
       RETURNING *
     `;
 
-    console.log('🔄 Update query:', query);
-    console.log('📝 Update values:', values);
+    console.log('📄 Update query:', query);
+    console.log('🔍 Update values:', values);
 
     const result = await pool.query(query, values);
     return result.rows[0];

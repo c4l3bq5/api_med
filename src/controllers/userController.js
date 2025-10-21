@@ -38,7 +38,7 @@ const userController = {
     }
   },
 
-  // Create new user
+  // 🔥 MODIFICADO: Create new user con contraseña temporal
   async create(req, res, next) {
     try {
       const errors = validationResult(req);
@@ -87,15 +87,24 @@ const userController = {
         });
       }
 
-      const newUser = await req.db.User.create(req.body);
+      // 🔥 CAMBIO CRÍTICO: Usar createWithTempPassword en lugar de create
+      const result = await req.db.User.createWithTempPassword(req.body);
+      const newUser = result.user;
+      const tempPassword = result.tempPassword;
       
-      // Remove password from response
-      const { contrasena, ...userWithoutPassword } = newUser;
+      // Remove sensitive fields from response
+      const { contrasena, mfa_secreto, ...userWithoutSensitive } = newUser;
       
       res.status(201).json({
         success: true,
-        message: 'User created successfully',
-        data: userWithoutPassword
+        message: 'User created successfully with temporary password',
+        data: {
+          ...userWithoutSensitive,
+          // 🔥 Incluir la contraseña temporal en la respuesta
+          // El frontend debe mostrarla al administrador
+          temporaryPassword: tempPassword,
+          mustChangePassword: true
+        }
       });
     } catch (error) {
       if (error.code === '23505') {
