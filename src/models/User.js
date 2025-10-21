@@ -99,7 +99,8 @@ static async update(id, userData) {
     contrasena,
     mfa_secreto,
     mfa_activo,
-    activo
+    activo,
+    es_temporal 
   } = userData;
 
   // Construir dinámicamente la query basada en qué campos se envíen
@@ -139,12 +140,20 @@ static async update(id, userData) {
     values.push(activo);
   }
 
+  if (es_temporal !== undefined) {
+    updates.push(`es_temporal = $${paramIndex++}`);
+    values.push(es_temporal);
+  }
+
   // Si no hay campos para actualizar, devolver el usuario existente
   if (updates.length === 0) {
     const query = `SELECT * FROM usuario WHERE id = $1`;
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
+
+  // Siempre actualizar updated_at
+  updates.push(`updated_at = CURRENT_TIMESTAMP`);
 
   // Agregar el ID al final
   values.push(id);
