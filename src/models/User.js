@@ -88,7 +88,7 @@ class User {
     return result.rows[0];
   }
 
-  // 🔥 NUEVO: Crea un usuario con contraseña temporal
+  // 🔥 Crea un usuario con contraseña temporal
   static async createWithTempPassword(userData) {
     const {
       persona_id,
@@ -127,7 +127,7 @@ class User {
     };
   }
 
-  // 🔥 NUEVO: Genera contraseña temporal aleatoria
+  // 🔥 Genera contraseña temporal aleatoria
   static generateTempPassword(length = 8) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
     let password = '';
@@ -137,11 +137,13 @@ class User {
     return password;
   }
 
+  // 🔥 CORREGIDO: Soporte para contraseñas pre-hasheadas
   static async update(id, userData) {
     const {
       rol_id,
       usuario,
       contrasena,
+      contrasena_hasheada, // 🔥 NUEVO: Para contraseñas ya hasheadas
       mfa_secreto,
       mfa_activo,
       activo,
@@ -162,7 +164,15 @@ class User {
       values.push(usuario);
     }
 
-    if (contrasena !== undefined) {
+    // 🔥 CRÍTICO: Diferenciar entre contraseña plana y pre-hasheada
+    if (contrasena_hasheada !== undefined) {
+      // Si viene contrasena_hasheada, usarla directamente (ya está hasheada)
+      console.log('🔐 Usando contraseña pre-hasheada desde microservicio MFA');
+      updates.push(`contrasena = $${paramIndex++}`);
+      values.push(contrasena_hasheada);
+    } else if (contrasena !== undefined) {
+      // Si viene contrasena normal, hashearla
+      console.log('🔐 Hasheando contraseña nueva');
       const hashedContrasena = await bcrypt.hash(contrasena, 12);
       updates.push(`contrasena = $${paramIndex++}`);
       values.push(hashedContrasena);
@@ -207,7 +217,11 @@ class User {
     `;
 
     console.log('📄 Update query:', query);
-    console.log('🔍 Update values:', values);
+    console.log('🔢 Update values:', values.map((v, i) => 
+      i === values.findIndex(val => val === userData.contrasena_hasheada) 
+        ? '[HASH OCULTO]' 
+        : v
+    ));
 
     const result = await pool.query(query, values);
     return result.rows[0];
@@ -316,6 +330,8 @@ class User {
     }
   }
 
+  // 🔥 MÉTODO ESPECÍFICO para cambio de contraseña temporal
+  // Este método ya recibe el hash correcto y no lo vuelve a hashear
   static async changeTemporaryPassword(userId, newPasswordHash) {
     const query = `
       UPDATE usuario 
@@ -328,7 +344,9 @@ class User {
     `;
     
     try {
+      console.log('🔐 Guardando nuevo hash de contraseña...');
       const result = await pool.query(query, [newPasswordHash, userId]);
+      console.log('✅ Hash guardado correctamente');
       return result.rows[0];
     } catch (error) {
       console.error('Error changing temporary password:', error);
