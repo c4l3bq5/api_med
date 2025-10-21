@@ -80,8 +80,8 @@ const authController = {
           success: true,
           message: 'Debe cambiar su contraseña temporal',
           data: {
-            requiresPasswordChange: true,
-            userId: user.id,
+            requiresPasswordChange: true, // 🔥 CRÍTICO
+            userId: user.id,              // 🔥 CRÍTICO
             token: tempToken,
             user: userWithoutSensitive
           }
