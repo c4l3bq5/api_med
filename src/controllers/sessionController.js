@@ -34,6 +34,45 @@ const sessionController = {
     }
   },
 
+  async createSession(req, res, next) {
+    try {
+      const { usuario_id, token } = req.body;
+
+      if (!usuario_id || !token) {
+        return res.status(400).json({
+          success: false,
+          message: 'usuario_id y token son requeridos'
+        });
+      }
+
+      const User = require('../models/User');
+      const user = await User.findById(usuario_id);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      // Crear la sesión
+      const newSession = await Session.create({
+        usuario_id,
+        token
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Sesión creada exitosamente',
+        data: newSession
+      });
+
+    } catch (error) {
+      console.error('Error creating session:', error);
+      next(error);
+    }
+  },
+
   // Close specific session (admin or own session)
   async closeSession(req, res, next) {
     try {
