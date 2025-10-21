@@ -12,10 +12,6 @@ const createUserValidation = [
     .isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters')
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Username can only contain letters, numbers and underscores'),
   
-  body('contrasena')
-    .notEmpty().withMessage('contrasenaword is required')
-    .isLength({ min: 6 }).withMessage('contrasenaword must be at least 6 characters'),
-  
   body('mfa_secreto')
     .optional()
     .isLength({ max: 255 }).withMessage('MFA secret must not exceed 255 characters'),
