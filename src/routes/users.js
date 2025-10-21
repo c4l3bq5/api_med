@@ -9,59 +9,106 @@ const {
   idValidation
 } = require('../middleware/validators/userValidation');
 
+// ==================== ENDPOINTS INTERNOS (Sin autenticación) ====================
+// ✅ Para llamadas desde microservicios internos (mfa-service)
+
+// GET /api/users/:id/internal - Obtener usuario (interno)
+router.get('/:id/internal', idValidation, userController.getById);
+
+// PUT /api/users/:id/internal - Actualizar usuario (interno)
+router.put('/:id/internal', updateUserValidation, userController.update);
+
+// PATCH /api/users/:id/internal/password - Actualizar contraseña (interno)
+router.patch('/:id/internal/password', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { contrasena, es_temporal } = req.body;
+
+    if (!contrasena) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nueva contraseña es requerida'
+      });
+    }
+
+    const existingUser = await req.db.User.findById(id);
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const updatedUser = await req.db.User.update(id, {
+      contrasena,
+      es_temporal: es_temporal !== undefined ? es_temporal : false
+    });
+
+    const { contrasena: pwd, mfa_secreto, ...userSafe } = updatedUser;
+
+    res.json({
+      success: true,
+      message: 'Contraseña actualizada exitosamente',
+      data: {
+        id: userSafe.id,
+        usuario: userSafe.usuario,
+        es_temporal: userSafe.es_temporal
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ==================== ENDPOINTS EXTERNOS (Con autenticación) ====================
+
 // GET /api/users - Get all users
 router.get('/', authenticateToken, requireAdmin, userController.getAll);
 
 // GET /api/users/:id - Get user by ID
 router.get('/:id', authenticateToken, requireAdmin, idValidation, userController.getById);
 
-router.patch(
-  '/:id/password',
-  authenticateToken, // Solo requiere autenticación, no admin
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { contrasena, es_temporal } = req.body;
+// PATCH /api/users/:id/password - Actualizar contraseña (usuario autenticado)
+router.patch('/:id/password', authenticateToken, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { contrasena, es_temporal } = req.body;
 
-      if (!contrasena) {
-        return res.status(400).json({
-          success: false,
-          message: 'Nueva contraseña es requerida'
-        });
-      }
-
-      // Verificar que el usuario existe
-      const existingUser = await req.db.User.findById(id);
-      if (!existingUser) {
-        return res.status(404).json({
-          success: false,
-          message: 'Usuario no encontrado'
-        });
-      }
-
-      // Actualizar contraseña
-      const updatedUser = await req.db.User.update(id, {
-        contrasena,
-        es_temporal: es_temporal !== undefined ? es_temporal : false
+    if (!contrasena) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nueva contraseña es requerida'
       });
-
-      // No retornar datos sensibles
-      const { contrasena: pwd, mfa_secreto, ...userSafe } = updatedUser;
-
-      res.json({
-        success: true,
-        message: 'Contraseña actualizada exitosamente',
-        data: {
-          id: userSafe.id,
-          usuario: userSafe.usuario,
-          es_temporal: userSafe.es_temporal
-        }
-      });
-    } catch (error) {
-      next(error);
     }
+
+    const existingUser = await req.db.User.findById(id);
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const updatedUser = await req.db.User.update(id, {
+      contrasena,
+      es_temporal: es_temporal !== undefined ? es_temporal : false
+    });
+
+    const { contrasena: pwd, mfa_secreto, ...userSafe } = updatedUser;
+
+    res.json({
+      success: true,
+      message: 'Contraseña actualizada exitosamente',
+      data: {
+        id: userSafe.id,
+        usuario: userSafe.usuario,
+        es_temporal: userSafe.es_temporal
+      }
+    });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 // PATCH /api/users/:id/activate - Activate user
 router.patch('/:id/activate', authenticateToken, requireAdmin, idValidation, userController.activate);
