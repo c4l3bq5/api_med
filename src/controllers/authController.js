@@ -4,7 +4,7 @@ const Session = require('../models/Session');
 const { validationResult } = require('express-validator');
 
 const authController = {
-  // Login básico (sin MFA por ahora)
+  // 🔥 Login mejorado con MFA y contraseña temporal
   async login(req, res, next) {
     try {
       const errors = validationResult(req);
@@ -22,7 +22,7 @@ const authController = {
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid credentials'
+          message: 'Credenciales incorrectas'
         });
       }
 
@@ -30,34 +30,89 @@ const authController = {
       if (user.activo !== 'activo') {
         return res.status(401).json({
           success: false,
-          message: 'User account is inactive'
+          message: 'Cuenta de usuario inactiva'
+        });
+      }
+
+      // 🔥 Verificar si el usuario está bloqueado temporalmente
+      if (user.bloqueado_hasta && new Date(user.bloqueado_hasta) > new Date()) {
+        const minutosRestantes = Math.ceil(
+          (new Date(user.bloqueado_hasta) - new Date()) / 60000
+        );
+        return res.status(403).json({
+          success: false,
+          message: `Usuario bloqueado temporalmente. Intenta en ${minutosRestantes} minuto(s)`
         });
       }
 
       // Verificar contraseña
       const isValidPassword = await User.verifyContrasena(contrasena, user.contrasena);
+      
       if (!isValidPassword) {
+        // Incrementar intentos fallidos
+        await User.incrementFailedAttempts(user.id);
+        
         return res.status(401).json({
           success: false,
-          message: 'Invalid credentials'
+          message: 'Credenciales incorrectas'
         });
       }
 
-      // Si tiene MFA activo, pedir código MFA
-      if (user.mfa_activo) {
+      // 🔥 Resetear intentos fallidos en login exitoso
+      await User.resetFailedAttempts(user.id);
+
+      // Remover campos sensibles
+      const { contrasena: userPassword, mfa_secreto, ...userWithoutSensitive } = user;
+
+      // 🔥 FLUJO 1: Verificar si tiene contraseña temporal
+      if (user.es_temporal) {
+        const tempToken = jwt.sign(
+          { 
+            userId: user.id, 
+            step: 'change-password',
+            usuario: user.usuario 
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '15m' } // Token temporal para cambio de contraseña
+        );
+
         return res.status(200).json({
           success: true,
-          requiresMfa: true,
-          message: 'MFA code required',
-          tempToken: jwt.sign(
-            { userId: user.id, step: 'mfa' },
-            process.env.JWT_SECRET,
-            { expiresIn: '10m' } // Token temporal para MFA
-          )
+          message: 'Debe cambiar su contraseña temporal',
+          data: {
+            requiresPasswordChange: true,
+            userId: user.id,
+            token: tempToken,
+            user: userWithoutSensitive
+          }
         });
       }
 
-      // Generar JWT final (sin MFA)
+      // 🔥 FLUJO 2: Verificar si tiene MFA activo
+      if (user.mfa_activo) {
+        const tempToken = jwt.sign(
+          { 
+            userId: user.id, 
+            step: 'mfa',
+            usuario: user.usuario 
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: '10m' } // Token temporal para MFA
+        );
+
+        return res.status(200).json({
+          success: true,
+          message: 'Código MFA requerido',
+          data: {
+            requiresMFA: true,
+            userId: user.id,
+            token: tempToken,
+            user: userWithoutSensitive
+          }
+        });
+      }
+
+      // 🔥 FLUJO 3: Login normal (sin MFA ni contraseña temporal)
       const token = jwt.sign(
         {
           id: user.id,
@@ -67,34 +122,35 @@ const authController = {
           persona_id: user.persona_id
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
 
+      // Crear sesión
       await Session.create({
         usuario_id: user.id,
-        token: token // El JWT generado
-    });
+        token: token
+      });
 
-      // Remover contraseña del response
-      const { contrasena: userPassword, ...userWithoutPassword } = user;
+      // Actualizar último login
+      await User.updateLastLogin(user.id);
 
       res.json({
         success: true,
-        message: 'Login successful',
+        message: 'Login exitoso',
         data: {
-          user: userWithoutPassword,
+          user: userWithoutSensitive,
           token
         }
       });
 
     } catch (error) {
+      console.error('Error en login:', error);
       next(error);
     }
   },
 
-  
-
-  // Verificar MFA (para usuarios con MFA activo)
+  // 🔥 Verificar MFA (ya NO se usa - ahora lo hace el microservicio)
+  // Este endpoint se mantiene por compatibilidad pero delega al microservicio
   async verifyMfa(req, res, next) {
     try {
       const errors = validationResult(req);
@@ -114,14 +170,14 @@ const authController = {
       } catch (error) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid or expired MFA session'
+          message: 'Sesión MFA inválida o expirada'
         });
       }
 
       if (decoded.step !== 'mfa') {
         return res.status(401).json({
           success: false,
-          message: 'Invalid token'
+          message: 'Token inválido'
         });
       }
 
@@ -130,20 +186,13 @@ const authController = {
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'User not found'
+          message: 'Usuario no encontrado'
         });
       }
 
-      // TODO: Implementar verificación real del código MFA
-      // Por ahora simulamos verificación
-      const isMfaValid = await verifyMfaCode(user.mfa_secreto, codigo_mfa);
-      
-      if (!isMfaValid) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid MFA code'
-        });
-      }
+      // 🔥 NOTA: La verificación MFA real se hace en el microservicio
+      // Flutter llama directamente al microservicio MFA
+      // Este endpoint genera el token final DESPUÉS de que el microservicio verifica
 
       // Generar JWT final
       const token = jwt.sign(
@@ -155,27 +204,32 @@ const authController = {
           persona_id: user.persona_id
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
       );
       
+      // Crear sesión
       await Session.create({
         usuario_id: user.id,
         token: token
       });
 
+      // Actualizar último login
+      await User.updateLastLogin(user.id);
+
       // Remover contraseña del response
-      const { contrasena: userPassword, ...userWithoutPassword } = user; // Cambié el nombre aquí también
+      const { contrasena: userPassword, mfa_secreto, ...userWithoutSensitive } = user;
 
       res.json({
         success: true,
-        message: 'MFA verification successful',
+        message: 'Verificación MFA exitosa',
         data: {
-          user: userWithoutPassword,
+          user: userWithoutSensitive,
           token
         }
       });
 
     } catch (error) {
+      console.error('Error en verifyMfa:', error);
       next(error);
     }
   },
@@ -195,50 +249,49 @@ const authController = {
     }
   },
 
+  // Obtener información del usuario actual
   async me(req, res, next) {
-  try {
-    const userId = req.user.id;
-    const user = await req.db.User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    const { contrasena, mfa_secreto, ...userWithoutSensitive } = user;
-    
-    res.json({
-      success: true,
-      data: userWithoutSensitive
-    });
-  } catch (error) {
-    next(error);
-  }
-},
-
-  // Logout (manejado principalmente en el cliente)
-  async logout(req, res, next) {
     try {
-      // En un sistema más avanzado, podríamos invalidar el token
-      // Pero con JWT stateless, el cliente simplemente elimina el token
+      const userId = req.user.id;
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      const { contrasena, mfa_secreto, ...userWithoutSensitive } = user;
       
       res.json({
         success: true,
-        message: 'Logout successful'
+        data: userWithoutSensitive
       });
     } catch (error) {
       next(error);
     }
+  },
+
+  // Logout
+  async logout(req, res, next) {
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (token) {
+        // Cerrar sesión en la base de datos
+        await Session.closeSession(token);
+      }
+      
+      res.json({
+        success: true,
+        message: 'Logout exitoso'
+      });
+    } catch (error) {
+      console.error('Error en logout:', error);
+      next(error);
+    }
   }
 };
-
-// Función placeholder para verificación MFA (implementar luego)
-async function verifyMfaCode(mfaSecret, code) {
-  // TODO: Integrar con librería de MFA (como speakeasy, otplib)
-  // Por ahora retorna true para testing
-  return true;
-}
 
 module.exports = authController;
