@@ -210,6 +210,82 @@ static async update(id, userData) {
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
+
+static async incrementFailedAttempts(userId) {
+  const query = `
+    UPDATE usuario 
+    SET intentos_fallidos = intentos_fallidos + 1,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING intentos_fallidos
+  `;
+  
+  try {
+    const result = await pool.query(query, [userId]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error incrementing failed attempts:', error);
+    throw error;
+  }
+}
+
+static async resetFailedAttempts(userId) {
+  const query = `
+    UPDATE usuario 
+    SET intentos_fallidos = 0,
+        bloqueado_hasta = NULL,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING *
+  `;
+  
+  try {
+    const result = await pool.query(query, [userId]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error resetting failed attempts:', error);
+    throw error;
+  }
+}
+
+static async updateLastLogin(userId) {
+  const query = `
+    UPDATE usuario 
+    SET ultimo_login = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING ultimo_login
+  `;
+  
+  try {
+    const result = await pool.query(query, [userId]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error updating last login:', error);
+    throw error;
+  }
+}
+
+static async changeTemporaryPassword(userId, newPasswordHash) {
+  const query = `
+    UPDATE usuario 
+    SET contrasena = $1,
+        es_temporal = FALSE,
+        intentos_fallidos = 0,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING id, usuario, es_temporal
+  `;
+  
+  try {
+    const result = await pool.query(query, [newPasswordHash, userId]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error changing temporary password:', error);
+    throw error;
+  }
+}
+
 }
 
 module.exports = User;
