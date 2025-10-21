@@ -12,7 +12,6 @@ class User {
     
     const params = [];
     
-    // Si se pasa un parámetro active, filtra; si no, devuelve todos
     if (active !== null) {
       query += `WHERE u.activo = $1`;
       params.push(active ? 'activo' : 'inactivo');
@@ -67,7 +66,6 @@ class User {
       mfa_activo = false
     } = userData;
 
-    // Hash contraseña
     const hashedContrasena = await bcrypt.hash(contrasena, 12);
 
     const query = `
@@ -90,87 +88,82 @@ class User {
     return result.rows[0];
   }
 
-  // REEMPLAZA SOLO el método update() en User.js
+  // ✅ MÉTODO UPDATE CORREGIDO
+  static async update(id, userData) {
+    const {
+      rol_id,
+      usuario,
+      contrasena,
+      mfa_secreto,
+      mfa_activo,
+      activo,
+      es_temporal
+    } = userData;
 
-static async update(id, userData) {
-  const {
-    rol_id,
-    usuario,
-    contrasena,
-    mfa_secreto,
-    mfa_activo,
-    activo,
-    es_temporal 
-  } = userData;
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
 
-  // Construir dinámicamente la query basada en qué campos se envíen
-  const updates = [];
-  const values = [];
-  let paramIndex = 1;
+    if (rol_id !== undefined) {
+      updates.push(`rol_id = $${paramIndex++}`);
+      values.push(rol_id);
+    }
 
-  // Solo agregar campos que se envíen (no undefined)
-  if (rol_id !== undefined) {
-    updates.push(`rol_id = $${paramIndex++}`);
-    values.push(rol_id);
-  }
+    if (usuario !== undefined) {
+      updates.push(`usuario = $${paramIndex++}`);
+      values.push(usuario);
+    }
 
-  if (usuario !== undefined) {
-    updates.push(`usuario = $${paramIndex++}`);
-    values.push(usuario);
-  }
+    if (contrasena !== undefined) {
+      const hashedContrasena = await bcrypt.hash(contrasena, 12);
+      updates.push(`contrasena = $${paramIndex++}`);
+      values.push(hashedContrasena);
+    }
 
-  if (contrasena !== undefined) {
-    const hashedContrasena = await bcrypt.hash(contrasena, 12);
-    updates.push(`contrasena = $${paramIndex++}`);
-    values.push(hashedContrasena);
-  }
+    if (mfa_secreto !== undefined) {
+      updates.push(`mfa_secreto = $${paramIndex++}`);
+      values.push(mfa_secreto);
+    }
 
-  if (mfa_secreto !== undefined) {
-    updates.push(`mfa_secreto = $${paramIndex++}`);
-    values.push(mfa_secreto);
-  }
+    if (mfa_activo !== undefined) {
+      updates.push(`mfa_activo = $${paramIndex++}`);
+      values.push(mfa_activo);
+    }
 
-  if (mfa_activo !== undefined) {
-    updates.push(`mfa_activo = $${paramIndex++}`);
-    values.push(mfa_activo);
-  }
+    if (activo !== undefined) {
+      updates.push(`activo = $${paramIndex++}`);
+      values.push(activo);
+    }
 
-  if (activo !== undefined) {
-    updates.push(`activo = $${paramIndex++}`);
-    values.push(activo);
-  }
+    // ✅ CRÍTICO: Permitir actualizar es_temporal
+    if (es_temporal !== undefined) {
+      updates.push(`es_temporal = $${paramIndex++}`);
+      values.push(es_temporal);
+    }
 
-  if (es_temporal !== undefined) {
-    updates.push(`es_temporal = $${paramIndex++}`);
-    values.push(es_temporal);
-  }
+    if (updates.length === 0) {
+      const query = `SELECT * FROM usuario WHERE id = $1`;
+      const result = await pool.query(query, [id]);
+      return result.rows[0];
+    }
 
-  // Si no hay campos para actualizar, devolver el usuario existente
-  if (updates.length === 0) {
-    const query = `SELECT * FROM usuario WHERE id = $1`;
-    const result = await pool.query(query, [id]);
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    values.push(id);
+
+    const query = `
+      UPDATE usuario 
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    console.log('🔄 Update query:', query);
+    console.log('📝 Update values:', values);
+
+    const result = await pool.query(query, values);
     return result.rows[0];
   }
-
-  // Siempre actualizar updated_at
-  updates.push(`updated_at = CURRENT_TIMESTAMP`);
-
-  // Agregar el ID al final
-  values.push(id);
-
-  const query = `
-    UPDATE usuario 
-    SET ${updates.join(', ')}
-    WHERE id = $${paramIndex}
-    RETURNING *
-  `;
-
-  console.log('Update query:', query);
-  console.log('Update values:', values);
-
-  const result = await pool.query(query, values);
-  return result.rows[0];
-}
 
   static async delete(id) {
     const query = `
@@ -220,81 +213,80 @@ static async update(id, userData) {
     return result.rows[0];
   }
 
-static async incrementFailedAttempts(userId) {
-  const query = `
-    UPDATE usuario 
-    SET intentos_fallidos = intentos_fallidos + 1,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-    RETURNING intentos_fallidos
-  `;
-  
-  try {
-    const result = await pool.query(query, [userId]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error incrementing failed attempts:', error);
-    throw error;
+  static async incrementFailedAttempts(userId) {
+    const query = `
+      UPDATE usuario 
+      SET intentos_fallidos = intentos_fallidos + 1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING intentos_fallidos
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error incrementing failed attempts:', error);
+      throw error;
+    }
   }
-}
 
-static async resetFailedAttempts(userId) {
-  const query = `
-    UPDATE usuario 
-    SET intentos_fallidos = 0,
-        bloqueado_hasta = NULL,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-    RETURNING *
-  `;
-  
-  try {
-    const result = await pool.query(query, [userId]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error resetting failed attempts:', error);
-    throw error;
+  static async resetFailedAttempts(userId) {
+    const query = `
+      UPDATE usuario 
+      SET intentos_fallidos = 0,
+          bloqueado_hasta = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error resetting failed attempts:', error);
+      throw error;
+    }
   }
-}
 
-static async updateLastLogin(userId) {
-  const query = `
-    UPDATE usuario 
-    SET ultimo_login = CURRENT_TIMESTAMP,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-    RETURNING ultimo_login
-  `;
-  
-  try {
-    const result = await pool.query(query, [userId]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error updating last login:', error);
-    throw error;
+  static async updateLastLogin(userId) {
+    const query = `
+      UPDATE usuario 
+      SET ultimo_login = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING ultimo_login
+    `;
+    
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error updating last login:', error);
+      throw error;
+    }
   }
-}
 
-static async changeTemporaryPassword(userId, newPasswordHash) {
-  const query = `
-    UPDATE usuario 
-    SET contrasena = $1,
-        es_temporal = FALSE,
-        intentos_fallidos = 0,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = $2
-    RETURNING id, usuario, es_temporal
-  `;
-  
-  try {
-    const result = await pool.query(query, [newPasswordHash, userId]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error changing temporary password:', error);
-    throw error;
+  static async changeTemporaryPassword(userId, newPasswordHash) {
+    const query = `
+      UPDATE usuario 
+      SET contrasena = $1,
+          es_temporal = FALSE,
+          intentos_fallidos = 0,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id, usuario, es_temporal
+    `;
+    
+    try {
+      const result = await pool.query(query, [newPasswordHash, userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error changing temporary password:', error);
+      throw error;
+    }
   }
-}
-
 }
 
 module.exports = User;
