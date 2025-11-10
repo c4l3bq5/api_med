@@ -149,7 +149,7 @@ class MedicalHistory {
       tratamiento,
       foto_analizada,
       avance,
-      activo,
+      activo || 'activo',
       id
     ];
 
