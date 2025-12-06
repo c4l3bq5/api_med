@@ -9,20 +9,20 @@ class User {
       JOIN persona p ON u.persona_id = p.id
       JOIN roles r ON u.rol_id = r.id
     `;
-    
+
     const params = [];
-    
+
     if (active !== null) {
       query += `WHERE u.activo = $1`;
       params.push(active ? 'activo' : 'inactivo');
     }
-    
+
     query += ` ORDER BY u.id DESC`;
-    
-    const result = params.length > 0 
+
+    const result = params.length > 0
       ? await pool.query(query, params)
       : await pool.query(query);
-    
+
     return result.rows;
   }
 
@@ -119,8 +119,8 @@ class User {
     ];
 
     const result = await pool.query(query, values);
-    
-    // ✅ Retornar el usuario Y la contraseña temporal (sin hashear)
+
+    //   Retornar el usuario Y la contraseña temporal (sin hashear)
     return {
       user: result.rows[0],
       tempPassword: tempPassword // 🔥 IMPORTANTE: Solo para mostrarlo al admin
@@ -193,7 +193,7 @@ class User {
       values.push(activo);
     }
 
-    // ✅ CRÍTICO: Permitir actualizar es_temporal
+    //   CRÍTICO: Permitir actualizar es_temporal
     if (es_temporal !== undefined) {
       updates.push(`es_temporal = $${paramIndex++}`);
       values.push(es_temporal);
@@ -217,9 +217,9 @@ class User {
     `;
 
     console.log('📄 Update query:', query);
-    console.log('🔢 Update values:', values.map((v, i) => 
-      i === values.findIndex(val => val === userData.contrasena_hasheada) 
-        ? '[HASH OCULTO]' 
+    console.log('🔢 Update values:', values.map((v, i) =>
+      i === values.findIndex(val => val === userData.contrasena_hasheada)
+        ? '[HASH OCULTO]'
         : v
     ));
 
@@ -283,7 +283,7 @@ class User {
       WHERE id = $1
       RETURNING intentos_fallidos
     `;
-    
+
     try {
       const result = await pool.query(query, [userId]);
       return result.rows[0];
@@ -302,7 +302,7 @@ class User {
       WHERE id = $1
       RETURNING *
     `;
-    
+
     try {
       const result = await pool.query(query, [userId]);
       return result.rows[0];
@@ -320,7 +320,7 @@ class User {
       WHERE id = $1
       RETURNING ultimo_login
     `;
-    
+
     try {
       const result = await pool.query(query, [userId]);
       return result.rows[0];
@@ -342,11 +342,11 @@ class User {
       WHERE id = $2
       RETURNING id, usuario, es_temporal
     `;
-    
+
     try {
       console.log('🔐 Guardando nuevo hash de contraseña...');
       const result = await pool.query(query, [newPasswordHash, userId]);
-      console.log('✅ Hash guardado correctamente');
+      console.log('  Hash guardado correctamente');
       return result.rows[0];
     } catch (error) {
       console.error('Error changing temporary password:', error);

@@ -10,7 +10,7 @@ const {
 } = require('../middleware/validators/userValidation');
 
 // ==================== ENDPOINTS INTERNOS (Sin autenticación) ====================
-// ✅ Para llamadas desde microservicios internos (mfa-service)
+//   Para llamadas desde microservicios internos (mfa-service)
 
 // GET /api/users/:id/internal - Obtener usuario (interno)
 router.get('/:id/internal', idValidation, userController.getById);
