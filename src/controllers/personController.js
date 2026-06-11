@@ -8,7 +8,7 @@ const personController = {
     try {
       const { active } = req.query;
       const includeInactive = active === 'false';
-      
+
       const persons = await Person.findAll(!includeInactive);
       res.json({
         success: true,
@@ -25,7 +25,7 @@ const personController = {
     try {
       const { id } = req.params;
       const person = await Person.findById(id);
-      
+
       if (!person) {
         return res.status(404).json({
           success: false,
@@ -62,19 +62,30 @@ const personController = {
         });
       }
 
-      // Check if email already exists
+      // Check if email already exists among users
       if (req.body.mail) {
-        const existingEmail = await Person.findByEmail(req.body.mail);
+        const existingEmail = await Person.findByEmailAmongUsers(req.body.mail);
         if (existingEmail) {
           return res.status(409).json({
             success: false,
-            message: 'A person with this email already exists'
+            message: 'Un usuario del sistema ya tiene este correo registrado'
+          });
+        }
+      }
+
+      // Check if phone already exists among users
+      if (req.body.telefono) {
+        const existingPhone = await Person.findByPhoneAmongUsers(req.body.telefono);
+        if (existingPhone) {
+          return res.status(409).json({
+            success: false,
+            message: 'Un usuario del sistema ya tiene este teléfono registrado'
           });
         }
       }
 
       const newPerson = await Person.create(req.body);
-      
+
       res.status(201).json({
         success: true,
         message: 'Person created successfully',
@@ -103,7 +114,7 @@ const personController = {
       }
 
       const { id } = req.params;
-      
+
       // Check if person exists
       const existingPerson = await Person.findById(id);
       if (!existingPerson) {
@@ -114,23 +125,23 @@ const personController = {
       }
 
       if (req.user.rol_id !== 3) { // No es admin
-  // Médicos solo pueden editar pacientes
-  if (req.user.rol_id === 1) { // Es médico
-    const isPatient = await Patient.findByPersonId(id);
-    if (!isPatient) {
-      return res.status(403).json({
-        success: false,
-        message: 'Doctors can only edit patients'
-      });
-    }
-  } else {
-    // Internos y otros roles no pueden editar
-    return res.status(403).json({
-      success: false,
-      message: 'Insufficient permissions to edit persons'
-    });
-  }
-}
+        // Médicos solo pueden editar pacientes
+        if (req.user.rol_id === 1) { // Es médico
+          const isPatient = await Patient.findByPersonId(id);
+          if (!isPatient) {
+            return res.status(403).json({
+              success: false,
+              message: 'Doctors can only edit patients'
+            });
+          }
+        } else {
+          // Internos y otros roles no pueden editar
+          return res.status(403).json({
+            success: false,
+            message: 'Insufficient permissions to edit persons'
+          });
+        }
+      }
 
       const userExists = await User.findByPersonId(id);
       if (userExists && req.user.rol_id !== 3) {
@@ -151,19 +162,30 @@ const personController = {
         }
       }
 
-      // Check email duplicates (excluding current person)
+      // Check email duplicates among users only (excluding current person)
       if (req.body.mail) {
-        const existingEmail = await Person.findByEmail(req.body.mail);
+        const existingEmail = await Person.findByEmailAmongUsers(req.body.mail);
         if (existingEmail && existingEmail.id !== parseInt(id)) {
           return res.status(409).json({
             success: false,
-            message: 'Another person with this email already exists'
+            message: 'Otro usuario del sistema ya tiene este correo registrado'
+          });
+        }
+      }
+
+      // Check phone duplicates among users only (excluding current person)
+      if (req.body.telefono) {
+        const existingPhone = await Person.findByPhoneAmongUsers(req.body.telefono);
+        if (existingPhone && existingPhone.id !== parseInt(id)) {
+          return res.status(409).json({
+            success: false,
+            message: 'Otro usuario del sistema ya tiene este teléfono registrado'
           });
         }
       }
 
       const updatedPerson = await Person.update(id, req.body);
-      
+
       res.json({
         success: true,
         message: 'Person updated successfully',
@@ -184,7 +206,7 @@ const personController = {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      
+
       const existingPerson = await Person.findById(id);
       if (!existingPerson) {
         return res.status(404).json({
@@ -194,23 +216,23 @@ const personController = {
       }
 
       if (req.user.rol_id !== 3) { // No es admin
-  // Médicos solo pueden editar pacientes
-  if (req.user.rol_id === 1) { // Es médico
-    const isPatient = await Patient.findByPersonId(id);
-    if (!isPatient) {
-      return res.status(403).json({
-        success: false,
-        message: 'Doctors can only edit patients'
-      });
-    }
-  } else {
-    // Internos y otros roles no pueden editar
-    return res.status(403).json({
-      success: false,
-      message: 'Insufficient permissions to edit persons'
-    });
-  }
-}
+        // Médicos solo pueden editar pacientes
+        if (req.user.rol_id === 1) { // Es médico
+          const isPatient = await Patient.findByPersonId(id);
+          if (!isPatient) {
+            return res.status(403).json({
+              success: false,
+              message: 'Doctors can only edit patients'
+            });
+          }
+        } else {
+          // Internos y otros roles no pueden editar
+          return res.status(403).json({
+            success: false,
+            message: 'Insufficient permissions to edit persons'
+          });
+        }
+      }
 
       const userExists = await User.findByPersonId(id);
       if (userExists && req.user.rol_id !== 3) {
@@ -228,7 +250,7 @@ const personController = {
       }
 
       const deactivatedPerson = await Person.delete(id);
-      
+
       res.json({
         success: true,
         message: 'Person deactivated successfully',
@@ -243,7 +265,7 @@ const personController = {
   async activate(req, res, next) {
     try {
       const { id } = req.params;
-      
+
       const existingPerson = await Person.findById(id);
       if (!existingPerson) {
         return res.status(404).json({
@@ -260,7 +282,7 @@ const personController = {
       }
 
       const activatedPerson = await Person.activate(id);
-      
+
       res.json({
         success: true,
         message: 'Person activated successfully',
@@ -284,7 +306,7 @@ const personController = {
 
       const { q } = req.query;
       const results = await Person.search(q);
-      
+
       res.json({
         success: true,
         data: results,

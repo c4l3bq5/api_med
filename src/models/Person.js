@@ -67,53 +67,53 @@ class Person {
 
   // En Person.js, reemplaza el método update():
 
-static async update(id, personData) {
-  const updates = [];
-  const values = [];
-  let paramIndex = 1;
+  static async update(id, personData) {
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
 
-  // Mapeo de campos que pueden actualizarse
-  const allowedFields = {
-    nombre: personData.nombre,
-    a_paterno: personData.a_paterno,
-    a_materno: personData.a_materno,
-    fech_nac: personData.fech_nac,
-    telefono: personData.telefono,
-    mail: personData.mail,
-    ci: personData.ci,
-    genero: personData.genero,
-    domicilio: personData.domicilio,
-    activo: personData.activo
-  };
+    // Mapeo de campos que pueden actualizarse
+    const allowedFields = {
+      nombre: personData.nombre,
+      a_paterno: personData.a_paterno,
+      a_materno: personData.a_materno,
+      fech_nac: personData.fech_nac,
+      telefono: personData.telefono,
+      mail: personData.mail,
+      ci: personData.ci,
+      genero: personData.genero,
+      domicilio: personData.domicilio,
+      activo: personData.activo
+    };
 
-  // Solo agregar campos que se envíen (no undefined)
-  for (const [field, value] of Object.entries(allowedFields)) {
-    if (value !== undefined) {
-      updates.push(`${field} = $${paramIndex++}`);
-      values.push(value);
+    // Solo agregar campos que se envíen (no undefined)
+    for (const [field, value] of Object.entries(allowedFields)) {
+      if (value !== undefined) {
+        updates.push(`${field} = $${paramIndex++}`);
+        values.push(value);
+      }
     }
-  }
 
-  // Si no hay campos para actualizar, devolver la persona existente
-  if (updates.length === 0) {
-    const query = 'SELECT * FROM persona WHERE id = $1';
-    const result = await pool.query(query, [id]);
-    return result.rows[0];
-  }
+    // Si no hay campos para actualizar, devolver la persona existente
+    if (updates.length === 0) {
+      const query = 'SELECT * FROM persona WHERE id = $1';
+      const result = await pool.query(query, [id]);
+      return result.rows[0];
+    }
 
-  // Agregar el ID al final
-  values.push(id);
+    // Agregar el ID al final
+    values.push(id);
 
-  const query = `
+    const query = `
     UPDATE persona 
     SET ${updates.join(', ')}
     WHERE id = $${paramIndex}
     RETURNING *
   `;
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
-}
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
 
   static async delete(id) {
     const query = `

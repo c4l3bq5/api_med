@@ -87,6 +87,28 @@ const userController = {
         });
       }
 
+      // Check if the person's email is already used by another user
+      if (person.mail) {
+        const existingEmail = await req.db.Person.findByEmailAmongUsers(person.mail);
+        if (existingEmail && existingEmail.id !== parseInt(persona_id)) {
+          return res.status(409).json({
+            success: false,
+            message: 'El correo de esta persona ya está siendo usado por otro usuario del sistema'
+          });
+        }
+      }
+
+      // Check if the person's phone is already used by another user
+      if (person.telefono) {
+        const existingPhone = await req.db.Person.findByPhoneAmongUsers(person.telefono);
+        if (existingPhone && existingPhone.id !== parseInt(persona_id)) {
+          return res.status(409).json({
+            success: false,
+            message: 'El teléfono de esta persona ya está siendo usado por otro usuario del sistema'
+          });
+        }
+      }
+
       // 🔥 CAMBIO CRÍTICO: Usar createWithTempPassword en lugar de create
       const result = await req.db.User.createWithTempPassword(req.body);
       const newUser = result.user;
