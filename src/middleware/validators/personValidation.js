@@ -29,7 +29,7 @@ const createPersonValidation = [
   
   body('ci')
     .notEmpty().withMessage('CI is required')
-    .isLength({ min: 7, max: 7 }).withMessage('CI must be exactly 7 digits')
+    .isLength({ min: 1, max: 10 }).withMessage('CI must be between 1 and 10 digits')
     .isNumeric().withMessage('CI must contain only numbers'),
   
   body('genero')
